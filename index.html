@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mario Castle Adventure</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+    }
+
+    #game-container {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Parallax background */
+    #background {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .cloud {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50px;
+      animation: float 20s infinite linear;
+    }
+
+    @keyframes float {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(calc(100vw + 100px)); }
+    }
+
+    .castle-bg {
+      position: absolute;
+      bottom: 20%;
+      right: 5%;
+      width: 300px;
+      height: 350px;
+      opacity: 0.6;
+      z-index: 2;
+    }
+
+    .flower {
+      position: absolute;
+      bottom: 15%;
+    }
+
+    .hill {
+      position: absolute;
+      bottom: 0;
+      background: linear-gradient(to bottom, #2ecc71, #27ae60);
+      border-radius: 50% 50% 0 0;
+    }
+
+    /* Game canvas */
+    #game-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
+      background: transparent;
+    }
+
+    /* UI Elements */
+    #ui-container {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .health-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .heart {
+      width: 24px;
+      height: 24px;
+      background: #ff6b6b;
+      clip-path: polygon(50% 100%, 100% 38%, 82% 10%, 50% 35%, 18% 10%, 0% 38%);
+      transition: all 0.2s ease;
+    }
+
+    .heart.empty {
+      background: rgba(255, 107, 107, 0.3);
+    }
+
+    #score {
+      margin-top: 10px;
+    }
+
+    /* Menu screens */
+    .screen {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: none;
+      z-index: 1000;
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    #menu-screen {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .menu-title {
+      font-size: 72px;
+      color: white;
+      text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+      margin-bottom: 40px;
+      animation: bounce 1s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+
+    .button {
+      background: linear-gradient(to bottom, #ff6b6b, #ee5a52);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 24px;
+      border-radius: 15px;
+      cursor: pointer;
+      margin: 10px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .button:active {
+      transform: scale(0.95);
+    }
+
+    #dialogue-screen {
+      background: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .dialogue-box {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .dialogue-text {
+      font-size: 28px;
+      color: #333;
+      margin-bottom: 30px;
+      line-height: 1.4;
+    }
+
+    .choice-container {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .choice-btn {
+      background: linear-gradient(to bottom, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+
+    .choice-btn:hover {
+      transform: scale(1.05);
+    }
+
+    #game-over-screen {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .game-over-title {
+      font-size: 64px;
+      color: #ff6b6b;
+      text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+      margin-bottom: 20px;
+    }
+
+    .final-score {
+      font-size: 32px;
+      color: white;
+      margin-bottom: 40px;
+    }
+
+    .character-sprite {
+      position: absolute;
+      width: 40px;
+      height: 50px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .mario-sprite {
+      width: 40px;
+      height: 60px;
+    }
+
+    .toad-sprite {
+      width: 36px;
+      height: 50px;
+    }
+
+    .goomba-sprite {
+      width: 40px;
+      height: 32px;
+    }
+
+    .coin-sprite {
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle at 30% 30%, #ffd700, #ffed4e);
+      border-radius: 50%;
+      animation: spinCoin 0.5s infinite linear;
+    }
+
+    @keyframes spinCoin {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
+    }
+
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 15px;
+      border-radius: 8px;
+      z-index: 100;
+      line-height: 1.6;
+    }
+
+    @keyframes defeat {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    .goomba-defeated {
+      animation: defeat 0.4s ease-out forwards;
+    }
+
+    .bowser-boss {
+      position: absolute;
+      width: 100px;
+      height: 120px;
+      background: linear-gradient(to right, #2c3e50, #34495e);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      animation: shake 0.5s infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body>
+  <div id="game-container"><!-- Background -->
+   <div id="background">
+    <canvas id="parallax-canvas" style="position: absolute; width: 100%; height: 100%;"></canvas>
+   </div><!-- Game Canvas -->
+   <canvas id="game-canvas"></canvas><!-- UI -->
+   <div id="ui-container">
+    <div class="health-bar" id="health-bar"></div>
+    <div id="score">
+     Coins: 0
+    </div>
+    <div id="enemy-count" style="margin-top: 10px;">
+     Enemies: 0/60
+    </div>
+   </div>
+   <div id="instructions"><strong>WASD</strong> Move | <strong>SPACE</strong> Jump | <strong>SHIFT</strong> Sprint | <strong>C</strong> Attack
+   </div><!-- Screens -->
+   <div id="menu-screen" class="screen active">
+    <div class="menu-title">
+     🏰 Castle Adventure
+    </div><button class="button" onclick="startGame()">PLAY GAME</button>
+   </div>
+   <div id="dialogue-screen" class="screen">
+    <div class="dialogue-box">
+     <div class="dialogue-text" id="dialogue-text"></div>
+     <div class="choice-container" id="choice-container"></div>
+    </div>
+   </div>
+   <div id="game-over-screen" class="screen">
+    <div class="game-over-title" id="game-over-title">
+     GAME OVER
+    </div>
+    <div class="final-score" id="final-score"></div><button class="button" onclick="returnToMenu()">RETURN TO MENU</button>
+   </div>
+  </div>
+  <script>
+    // Game States
+    const GAME_STATE = {
+      MENU: 'menu',
+      INTRO: 'intro',
+      PLAYING: 'playing',
+      GAME_OVER: 'gameOver',
+      REJECTED: 'rejected'
+    };
+
+    let gameState = GAME_STATE.MENU;
+    let canvas, ctx;
+    let score = 0;
+    let health = 10;
+
+    // Game objects
+    const game = {
+      width: 0,
+      height: 0,
+      camera: { x: 0, y: 0 },
+      time: 0
+    };
+
+    // Toad (Player)
+    const player = {
+      x: 100,
+      y: 300,
+      width: 36,
+      height: 50,
+      vx: 0,
+      vy: 0,
+      jumping: false,
+      sprinting: false,
+      speed: 3,
+      sprintSpeed: 6,
+      jumpPower: 12,
+      color: '#ef5350',
+      capColor: '#e53935',
+      vestColor: '#fff59d',
+      eyeColor: '#2c3e50',
+      groundY: 0,
+      invulnerable: 0,
+      direction: 1,
+      animation: 'idle',
+      animationTime: 0,
+      attackRadius: 60,
+      attacking: false,
+      attackTime: 0
+    };
+
+    // Mario
+    const mario = {
+      x: 400,
+      y: 300,
+      width: 40,
+      height: 60,
+      vx: 0,
+      direction: -1,
+      color: '#d32f2f',
+      hatColor: '#b71c1c',
+      skinColor: '#ffb3ba',
+      visible: true,
+      state: 'idle',
+      animationTime: 0
+    };
+
+    // Goombas
+    let goombas = [];
+    let maxGoombas = 60;
+    let goombaSpawnRate = 0.5;
+    let goombaSpawnCounter = 0;
+
+    // Coins
+    let coins = [];
+
+    const keys = {};
+    const touchMap = {};
+
+    // Initialize game
+    function init() {
+      canvas = document.getElementById('game-canvas');
+      ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      game.width = canvas.width;
+      game.height = canvas.height;
+      player.groundY = canvas.height - 150;
+
+      // Draw background
+      drawBackground();
+
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        game.width = canvas.width;
+        game.height = canvas.height;
+        player.groundY = canvas.height - 150;
+      });
+
+      gameLoop();
+    }
+
+    // Background
+    function drawBackground() {
+      const parallaxCanvas = document.getElementById('parallax-canvas');
+      const pCtx = parallaxCanvas.getContext('2d');
+      parallaxCanvas.width = window.innerWidth;
+      parallaxCanvas.height = window.innerHeight;
+
+      // Sky gradient
+      const gradient = pCtx.createLinearGradient(0, 0, 0, parallaxCanvas.height);
+      gradient.addColorStop(0, '#87CEEB');
+      gradient.addColorStop(1, '#E0F6FF');
+      pCtx.fillStyle = gradient;
+      pCtx.fillRect(0, 0, parallaxCanvas.width, parallaxCanvas.height);
+
+      // Clouds
+      drawClouds(pCtx, parallaxCanvas.width, parallaxCanvas.height);
+
+      // Castle in distance
+      drawDistantCastle(pCtx, parallaxCanvas.width * 0.75, parallaxCanvas.height * 0.25);
+
+      // Ground
+      pCtx.fillStyle = '#2ecc71';
+      pCtx.fillRect(0, parallaxCanvas.height - 80, parallaxCanvas.width, 80);
+
+      // Flowers
+      drawFlowers(pCtx, parallaxCanvas.width, parallaxCanvas.height - 100);
+
+      // Hills
+      drawHills(pCtx, parallaxCanvas.width, parallaxCanvas.height - 80);
+    }
+
+    function drawClouds(ctx, w, h) {
+      for (let i = 0; i < 5; i++) {
+        const cloudX = (i * w / 5 + game.time * 0.5) % w;
+        const cloudY = 50 + i * 60;
+        drawCloud(ctx, cloudX, cloudY, 80, 40);
+      }
+    }
+
+    function drawCloud(ctx, x, y, w, h) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.beginPath();
+      ctx.arc(x, y, h / 2, Math.PI, 0);
+      ctx.arc(x + w / 2, y - h / 3, h / 2.5, Math.PI, 0);
+      ctx.arc(x + w, y, h / 2, Math.PI, 0);
+      ctx.lineTo(x + w, y + h / 2);
+      ctx.lineTo(x, y + h / 2);
+      ctx.fill();
+    }
+
+    function drawDistantCastle(ctx, x, y) {
+      ctx.fillStyle = 'rgba(150, 100, 200, 0.5)';
+
+      // Main tower
+      ctx.fillRect(x - 40, y - 60, 80, 120);
+
+      // Side towers
+      ctx.fillRect(x - 100, y - 40, 40, 100);
+      ctx.fillRect(x + 60, y - 40, 40, 100);
+
+      // Flags
+      ctx.fillStyle = 'rgba(255, 100, 100, 0.6)';
+      ctx.fillRect(x - 35, y - 65, 15, 10);
+      ctx.fillRect(x + 20, y - 50, 15, 10);
+    }
+
+    function drawFlowers(ctx, w, h) {
+      for (let i = 0; i < 8; i++) {
+        const x = (i * w / 8 + game.time * 0.2) % w;
+        drawFlower(ctx, x, h);
+      }
+    }
+
+    function drawFlower(ctx, x, y) {
+      // Stem
+      ctx.strokeStyle = '#27ae60';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - 15);
+      ctx.stroke();
+
+      // Petals
+      ctx.fillStyle = '#ff6b6b';
+      for (let i = 0; i < 5; i++) {
+        const angle = (i / 5) * Math.PI * 2;
+        const px = x + Math.cos(angle) * 8;
+        const py = y - 20 + Math.sin(angle) * 8;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Center
+      ctx.fillStyle = '#ffeb3b';
+      ctx.beginPath();
+      ctx.arc(x, y - 20, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawHills(ctx, w, h) {
+      ctx.fillStyle = 'rgba(46, 204, 113, 0.6)';
+      for (let i = 0; i < 6; i++) {
+        const x = (i * w / 4 + game.time * 0.1) % (w + 200) - 100;
+        ctx.beginPath();
+        ctx.ellipse(x, h, 150, 60, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Input
+    function handleKeyDown(e) {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (gameState === GAME_STATE.PLAYING && player.vy === 0) {
+          player.vy = -player.jumpPower;
+          player.jumping = true;
+        }
+      }
+      if (e.key.toLowerCase() === 'c') {
+        if (gameState === GAME_STATE.PLAYING && !player.attacking) {
+          player.attacking = true;
+          player.attackTime = 0;
+          attemptGoombaDefeat();
+        }
+      }
+    }
+
+    function handleKeyUp(e) {
+      keys[e.key.toLowerCase()] = false;
+    }
+
+    // Game loop
+    function gameLoop() {
+      update();
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+      if (gameState !== GAME_STATE.PLAYING) return;
+
+      // Player movement
+      player.vx = 0;
+      let isMoving = false;
+
+      if (keys['w'] || keys['arrowup']) player.vy = -3;
+      if (keys['a'] || keys['arrowleft']) {
+        player.vx = -player.speed;
+        player.direction = -1;
+        isMoving = true;
+      }
+      if (keys['d'] || keys['arrowright']) {
+        player.vx = player.speed;
+        player.direction = 1;
+        isMoving = true;
+      }
+
+      player.sprinting = keys['shift'];
+      if (player.sprinting && isMoving) {
+        player.vx *= 2;
+      }
+
+      // Update attack state
+      if (player.attacking) {
+        player.attackTime++;
+        if (player.attackTime > 20) {
+          player.attacking = false;
+        }
+      }
+
+      // Update animation
+      player.animation = isMoving ? (player.sprinting ? 'run' : 'walk') : 'idle';
+      player.animationTime += 0.05;
+
+      // Gravity
+      player.vy += 0.6;
+      if (player.vy > 15) player.vy = 15;
+
+      // Position
+      player.x += player.vx;
+      player.y += player.vy;
+
+      // Ground collision
+      if (player.y + player.height >= player.groundY) {
+        player.y = player.groundY - player.height;
+        player.vy = 0;
+        player.jumping = false;
+      }
+
+      // Invulnerability
+      if (player.invulnerable > 0) {
+        player.invulnerable--;
+      }
+
+      // Boundary
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.width > game.width) player.x = game.width - player.width;
+
+      // Goomba spawning
+      if (goombas.length < maxGoombas) {
+        goombaSpawnCounter += goombaSpawnRate;
+        if (goombaSpawnCounter >= 1) {
+          spawnGoomba();
+          goombaSpawnCounter = 0;
+        }
+      }
+
+      // Update goombas
+      goombas.forEach((goomba, index) => {
+        // AI - Chase player
+        const dx = player.x - goomba.x;
+        const distance = Math.abs(dx);
+
+        if (distance < 300) {
+          goomba.vx = dx > 0 ? goomba.speed : -goomba.speed;
+        } else {
+          goomba.vx = goomba.patrolSpeed * goomba.direction;
+        }
+
+        // Patrol
+        goomba.x += goomba.vx;
+        goomba.y += goomba.vy;
+
+        // Gravity
+        goomba.vy += 0.5;
+        if (goomba.vy > 12) goomba.vy = 12;
+
+        // Ground collision
+        if (goomba.y + goomba.height >= player.groundY) {
+          goomba.y = player.groundY - goomba.height;
+          goomba.vy = 0;
+        }
+
+        // Boundary
+        if (goomba.x < -50 || goomba.x > game.width + 50) {
+          goombas.splice(index, 1);
+        } else if (goomba.x < 0 || goomba.x + goomba.width > game.width) {
+          goomba.direction *= -1;
+        }
+
+        // Collision with player
+        if (
+          player.invulnerable === 0 &&
+          player.x < goomba.x + goomba.width &&
+          player.x + player.width > goomba.x &&
+          player.y < goomba.y + goomba.height &&
+          player.y + player.height > goomba.y
+        ) {
+          health--;
+          player.invulnerable = 120;
+          if (health <= 0) {
+            endGame();
+          }
+        }
+      });
+
+      // Update coins
+      coins.forEach((coin, index) => {
+        coin.animation += 0.05;
+        coin.y += Math.sin(coin.animation) * 0.2;
+
+        if (
+          player.x < coin.x + coin.size &&
+          player.x + player.width > coin.x &&
+          player.y < coin.y + coin.size &&
+          player.y + player.height > coin.y
+        ) {
+          score += 10;
+          coins.splice(index, 1);
+        }
+      });
+
+      // Update UI
+      updateUI();
+
+      game.time++;
+    }
+
+    function spawnGoomba() {
+      const side = Math.random() > 0.5 ? 'left' : 'right';
+      const x = side === 'left' ? -50 : game.width + 50;
+      const y = player.groundY - 32;
+
+      goombas.push({
+        x: x,
+        y: y,
+        width: 40,
+        height: 32,
+        vx: 0,
+        vy: 0,
+        speed: 2,
+        patrolSpeed: 1,
+        direction: side === 'left' ? 1 : -1,
+        color: '#8B4513',
+        eyeColor: '#ffff00'
+      });
+
+      // Spawn coin occasionally
+      if (Math.random() < 0.3) {
+        coins.push({
+          x: player.x + Math.random() * 200 - 100,
+          y: player.groundY - 100,
+          size: 20,
+          animation: 0
+        });
+      }
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, game.width, game.height);
+
+      // Draw mario (if visible)
+      if (mario.visible && gameState === GAME_STATE.INTRO) {
+        drawCharacter(mario);
+      }
+
+      // Draw castle
+      if (gameState === GAME_STATE.PLAYING) {
+        drawCastle();
+      }
+
+      // Draw player
+      if (gameState === GAME_STATE.PLAYING) {
+        ctx.save();
+        if (player.invulnerable > 0 && Math.floor(player.invulnerable / 10) % 2 === 0) {
+          ctx.globalAlpha = 0.5;
+        }
+        drawToad(player);
+        ctx.restore();
+
+        // Draw attack effect
+        if (player.attacking) {
+          ctx.save();
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = '#FFD700';
+          const attackX = player.x + player.width / 2 + (player.direction * player.attackRadius);
+          const attackY = player.y + player.height / 2;
+          ctx.beginPath();
+          ctx.arc(attackX, attackY, player.attackRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // Draw goombas
+      goombas.forEach(goomba => {
+        drawGoomba(goomba);
+      });
+
+      // Draw coins
+      coins.forEach(coin => {
+        drawCoin(coin);
+      });
+    }
+
+    function drawToad(toad) {
+      ctx.save();
+      ctx.translate(toad.x + toad.width / 2, toad.y + toad.height / 2);
+      if (toad.direction === -1) ctx.scale(-1, 1);
+      ctx.translate(-(toad.width / 2), -(toad.height / 2));
+
+      // Body
+      ctx.fillStyle = toad.color;
+      ctx.fillRect(6, 20, 24, 20);
+
+      // Vest
+      ctx.fillStyle = toad.vestColor;
+      ctx.fillRect(8, 22, 20, 8);
+
+      // Spots on vest
+      ctx.fillStyle = '#e53935';
+      ctx.fillRect(10, 24, 3, 3);
+      ctx.fillRect(18, 24, 3, 3);
+
+      // Mushroom cap
+      ctx.fillStyle = toad.capColor;
+      ctx.beginPath();
+      ctx.ellipse(18, 12, 12, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // White spots on cap
+      ctx.fillStyle = 'white';
+      ctx.fillRect(10, 8, 4, 4);
+      ctx.fillRect(22, 8, 4, 4);
+      ctx.fillRect(16, 5, 4, 3);
+
+      // Eyes
+      ctx.fillStyle = toad.eyeColor;
+      ctx.fillRect(12, 14, 2, 3);
+      ctx.fillRect(20, 14, 2, 3);
+
+      // Eyes shine
+      ctx.fillStyle = 'white';
+      ctx.fillRect(13, 14, 1, 1);
+      ctx.fillRect(21, 14, 1, 1);
+
+      // Mouth
+      ctx.strokeStyle = '#2c3e50';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(18, 18, 2, 0, Math.PI);
+      ctx.stroke();
+
+      // Feet
+      ctx.fillStyle = toad.color;
+      ctx.fillRect(8, 40, 5, 5);
+      ctx.fillRect(23, 40, 5, 5);
+
+      ctx.restore();
+    }
+
+    function drawGoomba(goomba) {
+      ctx.save();
+      ctx.translate(goomba.x + goomba.width / 2, goomba.y + goomba.height / 2);
+      if (goomba.direction === -1) ctx.scale(-1, 1);
+      ctx.translate(-(goomba.width / 2), -(goomba.height / 2));
+
+      // Body
+      ctx.fillStyle = goomba.color;
+      ctx.beginPath();
+      ctx.ellipse(20, 16, 18, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Spots
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.fillRect(10, 12, 4, 4);
+      ctx.fillRect(26, 12, 4, 4);
+      ctx.fillRect(18, 8, 4, 3);
+
+      // Eyes
+      ctx.fillStyle = goomba.eyeColor;
+      ctx.fillRect(12, 13, 3, 4);
+      ctx.fillRect(25, 13, 3, 4);
+
+      // Pupils
+      ctx.fillStyle = '#000';
+      ctx.fillRect(13, 14, 1, 2);
+      ctx.fillRect(26, 14, 1, 2);
+
+      ctx.restore();
+    }
+
+    function drawCoin(coin) {
+      ctx.save();
+      ctx.translate(coin.x + coin.size / 2, coin.y + coin.size / 2);
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(-coin.size / 2, -coin.size / 2, coin.size, coin.size);
+      ctx.strokeStyle = '#FFA500';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-coin.size / 2, -coin.size / 2, coin.size, coin.size);
+      ctx.fillStyle = '#FFB6C1';
+      ctx.fillRect(-coin.size / 2 + 4, -coin.size / 2 + 4, coin.size - 8, coin.size - 8);
+      ctx.restore();
+    }
+
+    function drawCharacter(char) {
+      ctx.fillStyle = char.color;
+      ctx.fillRect(char.x, char.y, char.width, char.height);
+    }
+
+    function drawCastle() {
+      const castleX = game.width - 300;
+      const castleY = player.groundY - 200;
+
+      // Main tower
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(castleX, castleY, 120, 200);
+
+      // Roof
+      ctx.fillStyle = '#D32F2F';
+      ctx.beginPath();
+      ctx.moveTo(castleX, castleY);
+      ctx.lineTo(castleX + 60, castleY - 40);
+      ctx.lineTo(castleX + 120, castleY);
+      ctx.fill();
+
+      // Flag
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(castleX + 55, castleY - 50, 10, 50);
+      ctx.fillStyle = '#D32F2F';
+      ctx.fillRect(castleX + 65, castleY - 40, 40, 20);
+
+      // Left tower
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(castleX - 50, castleY + 20, 50, 180);
+
+      // Left tower roof
+      ctx.fillStyle = '#D32F2F';
+      ctx.beginPath();
+      ctx.moveTo(castleX - 50, castleY + 20);
+      ctx.lineTo(castleX - 25, castleY - 20);
+      ctx.lineTo(castleX, castleY + 20);
+      ctx.fill();
+
+      // Right tower
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(castleX + 120, castleY + 20, 50, 180);
+
+      // Right tower roof
+      ctx.fillStyle = '#D32F2F';
+      ctx.beginPath();
+      ctx.moveTo(castleX + 120, castleY + 20);
+      ctx.lineTo(castleX + 145, castleY - 20);
+      ctx.lineTo(castleX + 170, castleY + 20);
+      ctx.fill();
+
+      // Door
+      ctx.fillStyle = '#2C2C2C';
+      ctx.fillRect(castleX + 50, castleY + 140, 40, 60);
+
+      // Door handle
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(castleX + 85, castleY + 170, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Windows
+      ctx.fillStyle = '#87CEEB';
+      ctx.fillRect(castleX + 15, castleY + 40, 20, 20);
+      ctx.fillRect(castleX + 85, castleY + 40, 20, 20);
+      ctx.fillRect(castleX - 30, castleY + 60, 15, 15);
+      ctx.fillRect(castleX + 155, castleY + 60, 15, 15);
+
+      // Window panes
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(castleX + 25, castleY + 40);
+      ctx.lineTo(castleX + 25, castleY + 60);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(castleX + 15, castleY + 50);
+      ctx.lineTo(castleX + 35, castleY + 50);
+      ctx.stroke();
+
+      // Bowser flag on top
+      ctx.fillStyle = '#2C2C2C';
+      ctx.fillRect(castleX + 100, castleY - 45, 8, 35);
+      ctx.fillStyle = '#FF6B6B';
+      ctx.beginPath();
+      ctx.moveTo(castleX + 108, castleY - 30);
+      ctx.lineTo(castleX + 130, castleY - 40);
+      ctx.lineTo(castleX + 130, castleY - 20);
+      ctx.fill();
+    }
+
+    function updateUI() {
+      const healthBar = document.getElementById('health-bar');
+      healthBar.innerHTML = '';
+      for (let i = 0; i < 10; i++) {
+        const heart = document.createElement('div');
+        heart.className = 'heart' + (i < health ? '' : ' empty');
+        healthBar.appendChild(heart);
+      }
+
+      document.getElementById('score').textContent = `Coins: ${score}`;
+      document.getElementById('enemy-count').textContent = `Enemies: ${goombas.length}/${maxGoombas}`;
+    }
+
+    function attemptGoombaDefeat() {
+      goombas.forEach((goomba, index) => {
+        const dx = (goomba.x + goomba.width / 2) - (player.x + player.width / 2);
+        const dy = (goomba.y + goomba.height / 2) - (player.y + player.height / 2);
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if goomba is in attack radius and in front of player
+        if (distance < player.attackRadius && Math.sign(dx) === player.direction) {
+          goombas.splice(index, 1);
+          score += 50;
+        }
+      });
+    }
+
+    // Screen management
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    function startGame() {
+      showScreen('dialogue-screen');
+      gameState = GAME_STATE.INTRO;
+      startDialogue();
+    }
+
+    function startDialogue() {
+      mario.x = game.width / 2 - 100;
+      mario.y = game.height / 2;
+
+      const dialogueText = document.getElementById('dialogue-text');
+      const choiceContainer = document.getElementById('choice-container');
+
+      dialogueText.textContent = '🔴 "Help oh hhhhhhhelp Princess Peach is going to clean Bowser\'s toilet!"';
+
+      choiceContainer.innerHTML = `
+        <button class="choice-btn" onclick="chooseYes()">YES</button>
+        <button class="choice-btn" onclick="chooseNo()">NO</button>
+      `;
+    }
+
+    function chooseYes() {
+      gameState = GAME_STATE.PLAYING;
+      showScreen('menu-screen');
+      setTimeout(() => {
+        showScreen('menu-screen');
+        gameState = GAME_STATE.PLAYING;
+        
+        // Reset game
+        player.x = 100;
+        player.y = 300;
+        player.vx = 0;
+        player.vy = 0;
+        score = 0;
+        health = 10;
+        goombas = [];
+        coins = [];
+
+        // Hide screens
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      }, 300);
+    }
+
+    function chooseNo() {
+      gameState = GAME_STATE.REJECTED;
+      endGameWithRejection();
+    }
+
+    function endGameWithRejection() {
+      showScreen('game-over-screen');
+      document.getElementById('game-over-title').textContent = '💔 REJECTED';
+      document.getElementById('final-score').textContent = 'Mario walked away sadly...';
+    }
+
+    function endGame() {
+      gameState = GAME_STATE.GAME_OVER;
+      showScreen('game-over-screen');
+      document.getElementById('game-over-title').textContent = '🎮 GAME OVER';
+      document.getElementById('final-score').textContent = `Final Score: ${score} Coins`;
+    }
+
+    function returnToMenu() {
+      gameState = GAME_STATE.MENU;
+      showScreen('menu-screen');
+      score = 0;
+      health = 10;
+      goombas = [];
+      coins = [];
+    }
+
+    // Start
+    window.addEventListener('load', init);
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f106ce156e74315',t:'MTc3Njk4NDYwNy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
