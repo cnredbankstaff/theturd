@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mario Castle Adventure</title>
+  <title>The Turd</title>
   <script src="/_sdk/element_sdk.js"></script>
   <style>
     * {
@@ -17,6 +17,7 @@
       height: 100%;
       overflow: hidden;
       font-family: 'Arial', sans-serif;
+      touch-action: none;
     }
 
     #game-container {
@@ -293,6 +294,98 @@
       line-height: 1.6;
     }
 
+    #mobile-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #mobile-controls.active {
+      display: flex;
+    }
+
+    .mobile-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 2px solid white;
+      background: rgba(100, 100, 100, 0.7);
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      user-select: none;
+      transition: all 0.1s;
+    }
+
+    .mobile-btn:active {
+      background: rgba(150, 150, 150, 0.9);
+      transform: scale(0.9);
+    }
+
+    .dpad-container {
+      display: grid;
+      grid-template-columns: 60px 60px 60px;
+      gap: 5px;
+      justify-items: center;
+    }
+
+    .dpad-btn {
+      width: 50px;
+      height: 50px;
+      border: 2px solid white;
+      background: rgba(100, 100, 100, 0.7);
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      touch-action: manipulation;
+      user-select: none;
+      transition: all 0.1s;
+    }
+
+    .dpad-btn:active {
+      background: rgba(150, 150, 150, 0.9);
+      transform: scale(0.9);
+    }
+
+    @media (max-width: 768px) {
+      #instructions {
+        font-size: 12px;
+        padding: 8px 12px;
+      }
+
+      .menu-title {
+        font-size: 48px;
+      }
+
+      .button {
+        padding: 12px 30px;
+        font-size: 18px;
+      }
+
+      .dialogue-box {
+        max-width: 90%;
+        padding: 30px 20px;
+      }
+
+      .dialogue-text {
+        font-size: 20px;
+      }
+
+      .choice-btn {
+        padding: 10px 20px;
+        font-size: 16px;
+      }
+    }
+
     @keyframes defeat {
       0% { transform: scale(1); opacity: 1; }
       100% { transform: scale(0); opacity: 0; }
@@ -342,10 +435,16 @@
     </div>
    </div>
    <div id="instructions"><strong>WASD</strong> Move | <strong>SPACE</strong> Jump | <strong>SHIFT</strong> Sprint | <strong>C</strong> Attack
+   </div>
+   <div id="mobile-controls">
+    <div class="dpad-container"><button class="dpad-btn" id="btn-left">←</button> <button class="dpad-btn" id="btn-up">↑</button> <button class="dpad-btn" id="btn-right">→</button>
+    </div>
+    <div style="display: flex; gap: 10px; justify-content: center;"><button class="mobile-btn" id="btn-jump">🚀</button> <button class="mobile-btn" id="btn-attack">⚔️</button>
+    </div>
    </div><!-- Screens -->
    <div id="menu-screen" class="screen active">
     <div class="menu-title">
-     🏰 Castle Adventure
+     🏰 The Turd
     </div><button class="button" onclick="startGame()">PLAY GAME</button>
    </div>
    <div id="dialogue-screen" class="screen">
@@ -439,6 +538,59 @@
     const keys = {};
     const touchMap = {};
 
+    // Detect mobile
+    const isMobile = () => window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // Mobile touch controls
+    function setupMobileControls() {
+      if (!isMobile()) return;
+
+      document.getElementById('mobile-controls').classList.add('active');
+
+      const touchButtons = {
+        'btn-left': () => { keys['a'] = true; },
+        'btn-right': () => { keys['d'] = true; },
+        'btn-up': () => { keys['w'] = true; },
+        'btn-jump': () => {
+          if (gameState === GAME_STATE.PLAYING && player.vy === 0) {
+            player.vy = -player.jumpPower;
+            player.jumping = true;
+          }
+        },
+        'btn-attack': () => {
+          if (gameState === GAME_STATE.PLAYING && !player.attacking) {
+            player.attacking = true;
+            player.attackTime = 0;
+            attemptGoombaDefeat();
+          }
+        }
+      };
+
+      Object.keys(touchButtons).forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+
+        btn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          touchButtons[btnId]();
+        });
+
+        btn.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          if (btnId === 'btn-left') keys['a'] = false;
+          if (btnId === 'btn-right') keys['d'] = false;
+          if (btnId === 'btn-up') keys['w'] = false;
+        });
+
+        btn.addEventListener('mousedown', () => touchButtons[btnId]());
+        btn.addEventListener('mouseup', () => {
+          if (btnId === 'btn-left') keys['a'] = false;
+          if (btnId === 'btn-right') keys['d'] = false;
+          if (btnId === 'btn-up') keys['w'] = false;
+        });
+      });
+    }
+
     // Initialize game
     function init() {
       canvas = document.getElementById('game-canvas');
@@ -463,10 +615,12 @@
       });
 
       gameLoop();
+      
+      // Setup mobile controls
+      setupMobileControls();
     }
 
     // Background
-    function drawBackground() {
       const parallaxCanvas = document.getElementById('parallax-canvas');
       const pCtx = parallaxCanvas.getContext('2d');
       parallaxCanvas.width = window.innerWidth;
@@ -606,6 +760,10 @@
     }
 
     function update() {
+      if (gameState === GAME_STATE.REJECTED) {
+        updateRejectionSequence();
+        return;
+      }
       if (gameState !== GAME_STATE.PLAYING) return;
 
       // Player movement
@@ -784,12 +942,17 @@
       }
 
       // Draw castle
-      if (gameState === GAME_STATE.PLAYING) {
+      if (gameState === GAME_STATE.PLAYING || gameState === GAME_STATE.REJECTED) {
         drawCastle();
       }
 
+      // Draw Bowser during rejection sequence
+      if (gameState === GAME_STATE.REJECTED) {
+        drawBowserSequence();
+      }
+
       // Draw player
-      if (gameState === GAME_STATE.PLAYING) {
+      if (gameState === GAME_STATE.PLAYING || gameState === GAME_STATE.REJECTED) {
         ctx.save();
         if (player.invulnerable > 0 && Math.floor(player.invulnerable / 10) % 2 === 0) {
           ctx.globalAlpha = 0.5;
@@ -1092,13 +1255,153 @@
 
     function chooseNo() {
       gameState = GAME_STATE.REJECTED;
-      endGameWithRejection();
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      
+      // Teleport Toad to castle
+      player.x = game.width - 250;
+      player.y = player.groundY - 200;
+      player.vx = 0;
+      player.vy = 0;
+      
+      // Start rejection sequence
+      setTimeout(() => {
+        triggerBowserAttack();
+      }, 1000);
+    }
+
+    let bowser = {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 120,
+      fireBreath: [],
+      attacking: false,
+      attackTime: 0
+    };
+
+    function triggerBowserAttack() {
+      bowser.x = game.width - 200;
+      bowser.y = player.groundY - 120;
+      bowser.attacking = true;
+      bowser.attackTime = 0;
+      bowser.fireBreath = [];
+
+      // Shoot fire across screen
+      const fireSpeed = 8;
+      for (let i = 0; i < 15; i++) {
+        bowser.fireBreath.push({
+          x: bowser.x + 80,
+          y: bowser.y + 40 + (Math.random() - 0.5) * 40,
+          vx: -fireSpeed + Math.random() * 2,
+          vy: (Math.random() - 0.5) * 3,
+          life: 120
+        });
+      }
+    }
+
+    function updateRejectionSequence() {
+      if (gameState !== GAME_STATE.REJECTED) return;
+
+      // Update fire breath
+      bowser.fireBreath.forEach((fire, index) => {
+        fire.x += fire.vx;
+        fire.y += fire.vy;
+        fire.life--;
+
+        if (fire.life <= 0) {
+          bowser.fireBreath.splice(index, 1);
+        }
+
+        // Check collision with player
+        if (
+          player.x < fire.x + 15 &&
+          player.x + player.width > fire.x - 15 &&
+          player.y < fire.y + 15 &&
+          player.y + player.height > fire.y - 15
+        ) {
+          endGameWithRejection();
+        }
+      });
+    }
+
+    function drawBowserSequence() {
+      if (gameState !== GAME_STATE.REJECTED) return;
+
+      // Draw Bowser
+      ctx.save();
+      ctx.fillStyle = '#2c3e50';
+      ctx.fillRect(bowser.x, bowser.y, bowser.width, bowser.height);
+
+      // Head
+      ctx.fillStyle = '#34495e';
+      ctx.beginPath();
+      ctx.arc(bowser.x + 50, bowser.y + 30, 25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Eyes (angry)
+      ctx.fillStyle = '#ffff00';
+      ctx.fillRect(bowser.x + 35, bowser.y + 20, 8, 8);
+      ctx.fillRect(bowser.x + 57, bowser.y + 20, 8, 8);
+
+      // Pupils
+      ctx.fillStyle = '#000';
+      ctx.fillRect(bowser.x + 36, bowser.y + 21, 4, 4);
+      ctx.fillRect(bowser.x + 60, bowser.y + 21, 4, 4);
+
+      // Mouth open (breathing fire)
+      ctx.fillStyle = '#ff4500';
+      ctx.beginPath();
+      ctx.arc(bowser.x + 50, bowser.y + 40, 12, 0, Math.PI);
+      ctx.fill();
+
+      // Horns
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.moveTo(bowser.x + 30, bowser.y + 10);
+      ctx.lineTo(bowser.x + 20, bowser.y - 5);
+      ctx.lineTo(bowser.x + 35, bowser.y + 15);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(bowser.x + 70, bowser.y + 10);
+      ctx.lineTo(bowser.x + 80, bowser.y - 5);
+      ctx.lineTo(bowser.x + 65, bowser.y + 15);
+      ctx.fill();
+
+      // Draw fire breath
+      bowser.fireBreath.forEach(fire => {
+        ctx.save();
+        ctx.globalAlpha = fire.life / 120;
+        
+        // Outer flame (orange)
+        ctx.fillStyle = '#ff6b35';
+        ctx.beginPath();
+        ctx.ellipse(fire.x, fire.y, 15 + Math.sin(fire.life) * 5, 12 + Math.cos(fire.life) * 3, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Middle flame (yellow-orange)
+        ctx.fillStyle = '#ffaa33';
+        ctx.beginPath();
+        ctx.ellipse(fire.x, fire.y, 10 + Math.sin(fire.life) * 3, 8 + Math.cos(fire.life) * 2, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner flame (yellow)
+        ctx.fillStyle = '#ffff66';
+        ctx.beginPath();
+        ctx.ellipse(fire.x, fire.y, 5, 4, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      });
+
+      ctx.restore();
     }
 
     function endGameWithRejection() {
+      gameState = GAME_STATE.GAME_OVER;
       showScreen('game-over-screen');
-      document.getElementById('game-over-title').textContent = '💔 REJECTED';
-      document.getElementById('final-score').textContent = 'Mario walked away sadly...';
+      document.getElementById('game-over-title').textContent = '🔥 BURNED TO A CRISP';
+      document.getElementById('final-score').textContent = 'Bowser showed no mercy...';
     }
 
     function endGame() {
@@ -1120,5 +1423,5 @@
     // Start
     window.addEventListener('load', init);
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f106ce156e74315',t:'MTc3Njk4NDYwNy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f107d1bb55efd86',t:'MTc3Njk4NTI3MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
